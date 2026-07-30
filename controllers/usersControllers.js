@@ -1,4 +1,5 @@
-import { signUpUser, loginUser, verifyUser, requestPasswordReset, rese } from '../services/usersServices.js';
+import { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword } from '../services/usersServices.js';
+import User from "../models/usersModel.js"
 
 export const userSignUp = async (req, res, next) => {
     try {
@@ -15,6 +16,17 @@ export const userLogin = async (req, res, next) => {
         res.status(200).json(user);
     } catch (error) {
         next(error);
+    }
+}
+
+export const userLogout = async (req, res, next) => {
+    try {
+        const user = await User.findOneAndUpdate({ token: req.body.token}, { token: null }, { new: true });
+        if (!user) return res.status(401).json({ message: 'Invalid token' });
+
+        res.status(200).json(user);
+    } catch (error) {
+        next(error)
     }
 }
 

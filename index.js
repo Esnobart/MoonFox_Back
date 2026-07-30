@@ -5,6 +5,8 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 
+import usersRouter from './routes/usersRoutes.js';
+
 const app = express();
 const port = process.env.PORT || 4000;
 

@@ -1,16 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
-import { User } from '../models/usersModel.js';
+import User from '../models/usersModel.js';
 import { createHashPassword, comparePassword } from './passwordHashService.js';
-import { sendEmail } from './emailService.js';
+import { sendEmailVerify, sendEmailReset } from './emailService.js';
 import { signToken } from './jwtService.js';
 
 async function signUpUser(data) {
     const isExist = await User.findOne({ email: data.email });
     if (isExist) throw new Error('User with this email already exists');
     const password = await createHashPassword(data.password);
-    const newUser = new User.create({ ...data, password, verificationToken: uuidv4() });
+    const newUser = await User.create({ ...data, password, verificationToken: uuidv4() });
     if (!newUser) throw new Error('User not created');
     await sendEmailVerify(newUser.email, newUser.verificationToken);
     return { message: `User ${newUser.username} created successfully. Please check your email for verification.` };
@@ -25,7 +25,7 @@ async function loginUser(data) {
     const token = signToken(user._id);
     user.token = token;
     await user.save();
-    return { message: `User ${user.username} logged in successfully` };
+    return { message: `User ${user.username} logged in successfully`, token };
 }
 
 async function verifyUser(token) {
