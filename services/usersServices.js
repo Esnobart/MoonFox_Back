@@ -6,6 +6,13 @@ import { createHashPassword, comparePassword } from './passwordHashService.js';
 import { sendEmailVerify, sendEmailReset } from './emailService.js';
 import { signToken } from './jwtService.js';
 
+const buildPublicUser = (user) => ({
+    username: user.username,
+    email: user.email,
+    avatar: user.avatar,
+    role: user.role,
+});
+
 async function signUpUser(data) {
     const isExist = await User.findOne({ email: data.email });
     if (isExist) throw new Error('User with this email already exists');
@@ -25,7 +32,7 @@ async function loginUser(data) {
     const token = signToken(user._id);
     user.token = token;
     await user.save();
-    return { message: `User ${user.username} logged in successfully`, token };
+    return { message: `User ${user.username} logged in successfully`, token, user: buildPublicUser(user) };
 }
 
 async function verifyUser(token) {
@@ -74,4 +81,4 @@ async function setNewPassword(token, newPassword) {
     return { message: 'Password reset successfully' };
 }
 
-export { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword };
+export { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser };

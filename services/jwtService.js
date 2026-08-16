@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
+import { AUTH_TOKEN_EXPIRES_IN } from './authCookieService.js';
 
 export const signToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: AUTH_TOKEN_EXPIRES_IN });
 };
 
 export const verifyToken = (token) => {

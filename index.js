@@ -9,11 +9,15 @@ import usersRouter from './routes/usersRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
 mongoose.connect(process.env.API_KEY).then(() => {console.log("Database connection successful")}).catch((err) => {console.log(err); process.exit(1)});
 
 app.use(morgan('tiny'));
-app.use(cors());
+app.use(cors({
+    origin: clientUrl,
+    credentials: true,
+}));
 app.use(express.json());
 
 app.use('/api/users', usersRouter);
