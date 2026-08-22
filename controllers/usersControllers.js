@@ -3,6 +3,8 @@ import User from "../models/usersModel.js"
 import { signToken } from '../services/jwtService.js';
 import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions, parseCookies } from '../services/authCookieService.js';
 
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
 export const userSignUp = async (req, res, next) => {
     try {
         const user = await signUpUser(req.body);
@@ -60,7 +62,7 @@ export const userVerify = async (req, res, next) => {
     try {
         const user = await verifyUser(req.params.verificationToken);
         if (!user) throw new Error('User not found');
-        res.redirect('https://moonfox.vercel.app/verified-successfully');
+        res.redirect(`${clientUrl}/?verified=true`);
     } catch (error) {
         next(error);
     }

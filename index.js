@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import cors from 'cors';
 
 import usersRouter from './routes/usersRoutes.js';
+import productsRouter from './routes/productsRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -21,6 +22,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/users', usersRouter);
+app.use('/api/products', productsRouter);
 
 app.use((_, res) => {
     res.status(404).json({ message: "Route not found" });
