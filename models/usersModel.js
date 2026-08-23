@@ -24,6 +24,21 @@ const userSchema = new Schema({
         enum: ['user', 'partner', 'admin'],
         default: 'user'
     },
+    whishlist: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Product'
+    }],
+    basket: [{
+        product: {
+            type: Schema.Types.ObjectId,
+            ref: 'Product'
+        },
+        quantity: {
+            type: Number,
+            default: 1,
+            min: 1
+        }
+    }],
     verify: {
         type: Boolean,
         default: false

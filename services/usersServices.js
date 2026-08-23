@@ -11,6 +11,8 @@ const buildPublicUser = (user) => ({
     email: user.email,
     avatar: user.avatar,
     role: user.role,
+    whishlist: user.whishlist,
+    basket: user.basket
 });
 
 async function signUpUser(data) {
