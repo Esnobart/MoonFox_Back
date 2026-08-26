@@ -21,8 +21,8 @@ const userSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['user', 'partner', 'admin'],
-        default: 'user'
+        enum: ['User', 'Creator', 'Admin'],
+        default: 'User'
     },
     whishlist: [{
         type: Schema.Types.ObjectId,
@@ -38,6 +38,10 @@ const userSchema = new Schema({
             default: 1,
             min: 1
         }
+    }],
+    articles: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Product'
     }],
     verify: {
         type: Boolean,

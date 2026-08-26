@@ -14,10 +14,12 @@ const productSchema = new Schema({
         type: String
     },
     popular: {
-        type: Number
+        type: Number,
+        default: 0
     },
     inStock: {
-        type: Number
+        type: Number,
+        default: 0
     }
 });
 
