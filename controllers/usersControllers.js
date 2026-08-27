@@ -1,4 +1,4 @@
-import { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser } from '../services/usersServices.js';
+import { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser, userProductsPopulate } from '../services/usersServices.js';
 import User from "../models/usersModel.js"
 import { signToken } from '../services/jwtService.js';
 import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions, parseCookies } from '../services/authCookieService.js';
@@ -50,6 +50,7 @@ export const currentUser = async (req, res, next) => {
 
         req.user.token = token;
         await req.user.save();
+        await req.user.populate(userProductsPopulate);
 
         res.cookie(AUTH_COOKIE_NAME, token, loginCookieOptions);
         res.status(200).json({ user: buildPublicUser(req.user) });

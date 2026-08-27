@@ -6,6 +6,22 @@ import { createHashPassword, comparePassword } from './passwordHashService.js';
 import { sendEmailVerify, sendEmailReset } from './emailService.js';
 import { signToken } from './jwtService.js';
 
+const productRelationsPopulate = [
+    { path: 'author', select: 'username avatar role' },
+    { path: 'collectionName', select: 'name coverImg' }
+];
+
+const userProductsPopulate = [
+    {
+        path: 'basket.product',
+        populate: productRelationsPopulate
+    },
+    {
+        path: 'whishlist',
+        populate: productRelationsPopulate
+    }
+];
+
 const buildPublicUser = (user) => ({
     username: user.username,
     email: user.email,
@@ -26,7 +42,8 @@ async function signUpUser(data) {
 }
 
 async function loginUser(data) {
-    const user = await User.findOne({ $or: [{ email: data.email }, { username: data.username }] });
+    const user = await User.findOne({ $or: [{ email: data.email }, { username: data.username }] })
+        .populate(userProductsPopulate);
     if (!user) throw new Error('Invalid email or username');
     if (!user.verify) throw new Error('User not verified');
     const isMatch = await comparePassword(data.password, user.password);
@@ -83,4 +100,4 @@ async function setNewPassword(token, newPassword) {
     return { message: 'Password reset successfully' };
 }
 
-export { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser };
+export { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser, userProductsPopulate };

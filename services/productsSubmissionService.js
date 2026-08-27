@@ -1,5 +1,6 @@
 import { isValidObjectId } from 'mongoose';
 
+import Collection from '../models/collectionsModel.js';
 import ProductSubmission from '../models/productsSubmissionModel.js';
 import Product from '../models/productsModel.js';
 import User from '../models/usersModel.js';
@@ -18,6 +19,26 @@ const assertPendingSubmission = (submission) => {
         error.status = 400;
         throw error;
     }
+};
+
+const findOrCreateCollection = async ({ name, coverImg }) => {
+    const normalizedName = name?.trim();
+    if (!normalizedName) {
+        const error = new Error('Collection is required');
+        error.status = 400;
+        throw error;
+    }
+
+    return Collection.findOneAndUpdate(
+        { name: normalizedName },
+        {
+            $setOnInsert: {
+                name: normalizedName,
+                coverImg: coverImg || null
+            }
+        },
+        { new: true, upsert: true }
+    );
 };
 
 async function getAllProductSubmissions() {
@@ -54,11 +75,25 @@ async function submitNewProduct(submissionId, reviewerId) {
 
     assertPendingSubmission(submission);
 
+    const creator = await User.findById(submission.creator);
+    if (!creator) {
+        const error = new Error('Creator not found');
+        error.status = 404;
+        throw error;
+    }
+
+    const collection = await findOrCreateCollection({
+        name: submission.product.collectionName,
+        coverImg: submission.product.img
+    });
+
     const newProduct = await Product.create({
         name: submission.product.name,
+        price: submission.product.price,
+        description: submission.product.description,
         img: submission.product.img,
-        author: submission.product.author,
-        collectionName: submission.product.collectionName,
+        author: creator._id,
+        collectionName: collection._id,
         popular: submission.product.popular,
         inStock: submission.product.inStock
     });
@@ -66,6 +101,10 @@ async function submitNewProduct(submissionId, reviewerId) {
     submission.status = 'Approved';
     submission.reviewedBy = reviewerId;
     await submission.save();
+    await newProduct.populate([
+        { path: 'author', select: 'username avatar role' },
+        { path: 'collectionName', select: 'name coverImg' }
+    ]);
 
     return newProduct;
 };

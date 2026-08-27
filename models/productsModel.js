@@ -4,14 +4,24 @@ const productSchema = new Schema({
     name: {
         type: String
     },
+    price: {
+        type: Number
+    },
+    description: {
+        type: String
+    },
     img: {
         type: String
     },
     author: {
-        type: String
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
     collectionName: {
-        type: String
+        type: Schema.Types.ObjectId,
+        ref: 'Collection',
+        required: true
     },
     popular: {
         type: Number,

@@ -2,8 +2,13 @@ import { isValidObjectId } from 'mongoose';
 
 import Product from '../models/productsModel.js';
 
+const populateProductRelations = (query) =>
+    query
+        .populate('author', 'username avatar role')
+        .populate('collectionName', 'name coverImg');
+
 async function getProducts() {
-    return Product.find();
+    return populateProductRelations(Product.find());
 }
 
 async function getProductById(productId) {
@@ -13,7 +18,7 @@ async function getProductById(productId) {
         throw error;
     }
 
-    const product = await Product.findById(productId);
+    const product = await populateProductRelations(Product.findById(productId));
 
     if (!product) {
         const error = new Error('Product not found');

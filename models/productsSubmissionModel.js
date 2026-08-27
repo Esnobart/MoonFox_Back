@@ -8,8 +8,9 @@ const productSubmissionSchema = new Schema({
     },
     product: {
         name: String,
+        price: Number,
+        description: String,
         img: String,
-        author: String,
         collectionName: String,
         popular: Number,
         inStock: Number
