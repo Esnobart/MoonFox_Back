@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
+import helmet from 'helmet';
 
 import usersRouter from './routes/usersRoutes.js';
 import productsRouter from './routes/productsRoutes.js';
@@ -15,6 +16,7 @@ const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
 mongoose.connect(process.env.API_KEY).then(() => {console.log("Database connection successful")}).catch((err) => {console.log(err); process.exit(1)});
 
+app.use(helmet());
 app.use(morgan('tiny'));
 app.use(cors({
     origin: clientUrl,

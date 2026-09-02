@@ -32,22 +32,26 @@ const buildPublicUser = (user) => ({
 });
 
 async function signUpUser(data) {
-    const isExist = await User.findOne({ email: data.email });
+    const { username, email, password } = data;
+    const isExist = await User.findOne({ email: email });
     if (isExist) throw new Error('User with this email already exists');
-    const password = await createHashPassword(data.password);
-    const newUser = await User.create({ ...data, password, verificationToken: uuidv4() });
+    const isUsernameExist = await User.findOne({ username: username });
+    if (isUsernameExist) throw new Error('User with this username already exists');
+    const hashedPassword = await createHashPassword(password);
+    const newUser = await User.create({ username, email, password: hashedPassword, verificationToken: uuidv4() });
     if (!newUser) throw new Error('User not created');
     await sendEmailVerify(newUser.email, newUser.verificationToken);
     return { message: `User ${newUser.username} created successfully. Please check your email for verification.` };
 }
 
 async function loginUser(data) {
-    const user = await User.findOne({ $or: [{ email: data.email }, { username: data.username }] })
-        .populate(userProductsPopulate);
-    if (!user) throw new Error('Invalid email or username');
+    const { email, username, password } = data;
+    const user = await User.findOne({ $or: [{ email: email }, { username: username }] })
+        .populate(userProductsPopulate).select('+password');
+    if (!user) throw new Error('Invalid credentials');
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) throw new Error('Invalid credentials');
     if (!user.verify) throw new Error('User not verified');
-    const isMatch = await comparePassword(data.password, user.password);
-    if (!isMatch) throw new Error('Invalid password');
     const token = signToken(user._id);
     user.token = token;
     await user.save();
