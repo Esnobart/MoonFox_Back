@@ -13,6 +13,11 @@ const productSchema = new Schema({
     img: {
         type: String
     },
+    ageRestriction: {
+        type: String,
+        enum: ['None', '18+', '21+'],
+        default: 'None'
+    },
     author: {
         type: Schema.Types.ObjectId,
         ref: 'User',

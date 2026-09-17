@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 import User from '../models/usersModel.js';
+import Product from '../models/productsModel.js';
 import { createHashPassword, comparePassword } from './passwordHashService.js';
 import { sendEmailVerify, sendEmailReset } from './emailService.js';
 import { signToken } from './jwtService.js';
@@ -17,7 +18,7 @@ const userProductsPopulate = [
         populate: productRelationsPopulate
     },
     {
-        path: 'whishlist',
+        path: 'wishlist',
         populate: productRelationsPopulate
     }
 ];
@@ -27,7 +28,7 @@ const buildPublicUser = (user) => ({
     email: user.email,
     avatar: user.avatar,
     role: user.role,
-    whishlist: user.whishlist,
+    wishlist: user.wishlist,
     basket: user.basket
 });
 
@@ -104,4 +105,110 @@ async function setNewPassword(token, newPassword) {
     return { message: 'Password reset successfully' };
 }
 
-export { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser, userProductsPopulate };
+async function addProductToWishlist(userId, productId) {
+    const product = await Product.findById(productId);
+    if (!product) throw new Error('Product not found');
+
+    const user = await User.findByIdAndUpdate(
+        userId,
+        { $addToSet: { wishlist: product._id } },
+        { new: true }
+    );
+    if (!user) throw new Error('User not found');
+
+    await user.populate(userProductsPopulate);
+    return buildPublicUser(user);
+}
+
+async function removeProductFromWishlist(userId, productId) {
+    const user = await User.findByIdAndUpdate(
+        userId,
+        { $pull: { wishlist: productId } },
+        { new: true }
+    );
+    if (!user) throw new Error('User not found');
+
+    await user.populate(userProductsPopulate);
+    return buildPublicUser(user);
+}
+
+async function addProductToBasket(userId, productId, quantity) {
+    if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Quantity must be a positive integer');
+
+    const product = await Product.findById(productId);
+    if (!product) throw new Error('Product not found');
+
+    const stockQuantity = Number(product.inStock) || 0;
+    if (stockQuantity < 1) throw new Error('Product is out of stock');
+
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    const basketItem = user.basket.find(
+        (item) => item.product.toString() === product._id.toString()
+    );
+    const newQuantity = (basketItem?.quantity || 0) + quantity;
+
+    if (newQuantity > stockQuantity) throw new Error('Not enough products in stock');
+
+    if (basketItem) basketItem.quantity = newQuantity;
+    else user.basket.push({ product: product._id, quantity });
+
+    await user.save();
+    await user.populate(userProductsPopulate);
+    return buildPublicUser(user);
+}
+
+async function updateProductQuantityInBasket(userId, productId, quantity) {
+    if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Quantity must be a positive integer');
+
+    const product = await Product.findById(productId);
+    if (!product) throw new Error('Product not found');
+
+    const availableQuantity = Number(product.inStock) || 0;
+
+    if (quantity > availableQuantity) throw new Error('Not enough products in stock');
+
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    const basketItem = user.basket.find(
+        (item) => item.product.toString() === product._id.toString()
+    );
+
+    if (!basketItem) throw new Error('Product not found in basket');
+
+    basketItem.quantity = quantity;
+    await user.save();
+
+    await user.populate(userProductsPopulate);
+    return buildPublicUser(user);
+}
+
+async function removeProductFromBasket(userId, productId) {
+    const user = await User.findByIdAndUpdate(
+        userId,
+        { $pull: { basket: { product: productId } } },
+        { new: true }
+    );
+
+    if (!user) throw new Error('User not found');
+
+    await user.populate(userProductsPopulate);
+    return buildPublicUser(user);
+}
+
+export {
+    signUpUser,
+    loginUser,
+    verifyUser,
+    requestPasswordReset,
+    setNewPassword,
+    addProductToWishlist,
+    removeProductFromWishlist,
+    addProductToBasket,
+    updateProductQuantityInBasket,
+    removeProductFromBasket,
+    buildPublicUser,
+    userProductsPopulate
+};

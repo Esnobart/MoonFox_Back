@@ -11,6 +11,7 @@ const productSubmissionSchema = new Schema({
         price: Number,
         description: String,
         img: String,
+        ageRestriction: String,
         collectionName: String,
         popular: Number,
         inStock: Number

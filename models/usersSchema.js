@@ -25,3 +25,7 @@ export const forgotPasswordSchema = z.strictObject({
 export const resetPasswordSchema = z.strictObject({
     newPassword: passwordSchema
 });
+
+export const basketQuantitySchema = z.strictObject({
+    quantity: z.number().int({ message: 'Quantity must be an integer' }).min(1, { message: 'Quantity must be at least 1' })
+});

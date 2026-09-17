@@ -11,15 +11,13 @@ import productsRouter from './routes/productsRoutes.js';
 import productSubmissionRouter from './routes/productsSubmissionRoutes.js';
 
 const app = express();
-const port = process.env.PORT || 4000;
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
-mongoose.connect(process.env.API_KEY).then(() => {console.log("Database connection successful")}).catch((err) => {console.log(err); process.exit(1)});
+mongoose.connect(process.env.MONGODB_URI).then(() => {console.log("Database connection successful")}).catch((err) => {console.log(err); process.exit(1)});
 
 app.use(helmet());
 app.use(morgan('tiny'));
 app.use(cors({
-    origin: clientUrl,
+    origin: process.env.CLIENT_URL,
     credentials: true,
 }));
 app.use(express.json());
@@ -37,6 +35,6 @@ app.use((err, req, res, next) => {
     res.status(status).json({ message });
 });
 
-app.listen(port, () => {
-    console.log(`Server is running. Use our API on port: ${port}`);
+app.listen(4000, () => {
+    console.log(`Server is running. Use our API on port: 4000`);
 });

@@ -1,4 +1,17 @@
-import { signUpUser, loginUser, verifyUser, requestPasswordReset, setNewPassword, buildPublicUser, userProductsPopulate } from '../services/usersServices.js';
+import {
+    signUpUser,
+    loginUser,
+    verifyUser,
+    requestPasswordReset,
+    setNewPassword,
+    addProductToWishlist,
+    removeProductFromWishlist,
+    addProductToBasket,
+    updateProductQuantityInBasket,
+    removeProductFromBasket,
+    buildPublicUser,
+    userProductsPopulate
+} from '../services/usersServices.js';
 import User from "../models/usersModel.js"
 import { signToken } from '../services/jwtService.js';
 import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions, parseCookies } from '../services/authCookieService.js';
@@ -86,3 +99,52 @@ export const resetPassword = async (req, res, next) => {
         next(error);
     }
 }
+
+export const addWishlistProduct = async (req, res, next) => {
+    try {
+        const user = await addProductToWishlist(req.user._id, req.params.productId);
+        res.status(200).json({ message: 'Product added to wishlist', user });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const removeWishlistProduct = async (req, res, next) => {
+    try {
+        const user = await removeProductFromWishlist(req.user._id, req.params.productId);
+        res.status(200).json({ message: 'Product removed from wishlist', user });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const addBasketProduct = async (req, res, next) => {
+    try {
+        const user = await addProductToBasket(req.user._id, req.params.productId, req.body.quantity);
+        res.status(200).json({ message: 'Product added to basket', user });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateBasketProductQuantity = async (req, res, next) => {
+    try {
+        const user = await updateProductQuantityInBasket(
+            req.user._id,
+            req.params.productId,
+            req.body.quantity
+        );
+        res.status(200).json({ message: 'Basket quantity updated', user });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const removeBasketProduct = async (req, res, next) => {
+    try {
+        const user = await removeProductFromBasket(req.user._id, req.params.productId);
+        res.status(200).json({ message: 'Product removed from basket', user });
+    } catch (error) {
+        next(error);
+    }
+};

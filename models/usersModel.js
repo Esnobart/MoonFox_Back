@@ -25,7 +25,7 @@ const userSchema = new Schema({
         enum: ['User', 'Creator', 'Admin'],
         default: 'User'
     },
-    whishlist: [{
+    wishlist: [{
         type: Schema.Types.ObjectId,
         ref: 'Product'
     }],
