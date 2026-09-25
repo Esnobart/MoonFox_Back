@@ -9,10 +9,10 @@ export const authMiddleware = async (req, res, next) => {
 
         if (!token) return res.status(401).json({ message: 'Not authorized' });
 
-        const userId = verifyToken(token);
-        const user = await User.findById(userId);
+        const { id, sessionVersion } = verifyToken(token);
+        const user = await User.findById(id);
 
-        if (!user || user.token !== token) {
+        if (!user || user.sessionVersion !== sessionVersion) {
             return res.status(401).json({ message: 'Not authorized' });
         }
 

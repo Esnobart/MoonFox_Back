@@ -12,9 +12,8 @@ import {
     buildPublicUser,
     userProductsPopulate
 } from '../services/usersServices.js';
-import User from "../models/usersModel.js"
 import { signToken } from '../services/jwtService.js';
-import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions, parseCookies } from '../services/authCookieService.js';
+import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions } from '../services/authCookieService.js';
 
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -43,13 +42,6 @@ export const userLogin = async (req, res, next) => {
 
 export const userLogout = async (req, res, next) => {
     try {
-        const cookies = parseCookies(req.headers.cookie);
-        const token = cookies[AUTH_COOKIE_NAME];
-
-        if (token) {
-            await User.findOneAndUpdate({ token }, { token: null });
-        }
-
         res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
         res.status(200).json({ message: 'User logged out successfully' });
     } catch (error) {
@@ -59,10 +51,8 @@ export const userLogout = async (req, res, next) => {
 
 export const currentUser = async (req, res, next) => {
     try {
-        const token = signToken(req.user._id);
+        const token = signToken(req.user._id, req.user.sessionVersion);
 
-        req.user.token = token;
-        await req.user.save();
         await req.user.populate(userProductsPopulate);
 
         res.cookie(AUTH_COOKIE_NAME, token, loginCookieOptions);

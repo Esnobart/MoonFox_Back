@@ -53,9 +53,7 @@ async function loginUser(data) {
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) throw new Error('Invalid credentials');
     if (!user.verify) throw new Error('User not verified');
-    const token = signToken(user._id);
-    user.token = token;
-    await user.save();
+    const token = signToken(user._id, user.sessionVersion);
     return { message: `User ${user.username} logged in successfully`, token, user: buildPublicUser(user) };
 }
 
@@ -98,7 +96,7 @@ async function setNewPassword(token, newPassword) {
     user.passwordResetToken = undefined;
     user.passwordResetTokenExpiration = undefined;
 
-    user.token = undefined; // Invalidate any existing JWT tokens
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
 
     await user.save();
 

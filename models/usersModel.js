@@ -60,9 +60,9 @@ const userSchema = new Schema({
         type: Date,
         default: null
     },
-    token: {
-        type: String,
-        default: null
+    sessionVersion: {
+        type: Number,
+        default: 0
     }
     
 });
