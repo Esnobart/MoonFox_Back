@@ -92,6 +92,7 @@ async function submitNewProduct(submissionId, reviewerId) {
         price: submission.product.price,
         description: submission.product.description,
         img: submission.product.img,
+        ageRestriction: submission.product.ageRestriction,
         author: creator._id,
         collectionName: collection._id,
         popular: submission.product.popular,

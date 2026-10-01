@@ -8,6 +8,7 @@ import {
     forgotPassword,
     resetPassword,
     currentUser,
+    publicUserProfile,
     addWishlistProduct,
     removeWishlistProduct,
     addBasketProduct,
@@ -28,6 +29,8 @@ usersRouter.post('/signin', authLimiter, validateBody(signInSchema), userLogin);
 usersRouter.post('/logout', userLogout);
 
 usersRouter.get('/current', authMiddleware, currentUser);
+
+usersRouter.get('/profile/:username', publicUserProfile);
 
 usersRouter.get('/verify/:verificationToken', userVerify);
 

@@ -24,6 +24,7 @@ const userProductsPopulate = [
 ];
 
 const buildPublicUser = (user) => ({
+    _id: user._id,
     username: user.username,
     email: user.email,
     avatar: user.avatar,
@@ -46,8 +47,13 @@ async function signUpUser(data) {
 }
 
 async function loginUser(data) {
-    const { email, username, password } = data;
-    const user = await User.findOne({ $or: [{ email: email }, { username: username }] })
+    const { identifier, password } = data;
+    const user = await User.findOne({
+        $or: [
+            { email: identifier.toLowerCase() },
+            { username: identifier }
+        ]
+    })
         .populate(userProductsPopulate).select('+password');
     if (!user) throw new Error('Invalid credentials');
     const isMatch = await comparePassword(password, user.password);
@@ -101,6 +107,28 @@ async function setNewPassword(token, newPassword) {
     await user.save();
 
     return { message: 'Password reset successfully' };
+}
+
+async function getPublicUserProfile(username) {
+    const user = await User.findOne({ username }).select('_id username avatar role');
+    if (!user) {
+        const error = new Error('User not found');
+        error.status = 404;
+        throw error;
+    }
+
+    const products = await Product.find({ author: user._id })
+        .populate('author', 'username avatar role')
+        .populate('collectionName', 'name coverImg')
+        .sort({ _id: -1 });
+
+    return {
+        _id: user._id,
+        username: user.username,
+        avatar: user.avatar,
+        role: user.role,
+        products
+    };
 }
 
 async function addProductToWishlist(userId, productId) {
@@ -202,6 +230,7 @@ export {
     verifyUser,
     requestPasswordReset,
     setNewPassword,
+    getPublicUserProfile,
     addProductToWishlist,
     removeProductFromWishlist,
     addProductToBasket,

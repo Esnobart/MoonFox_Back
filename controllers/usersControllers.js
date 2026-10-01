@@ -4,6 +4,7 @@ import {
     verifyUser,
     requestPasswordReset,
     setNewPassword,
+    getPublicUserProfile,
     addProductToWishlist,
     removeProductFromWishlist,
     addProductToBasket,
@@ -89,6 +90,15 @@ export const resetPassword = async (req, res, next) => {
         next(error);
     }
 }
+
+export const publicUserProfile = async (req, res, next) => {
+    try {
+        const user = await getPublicUserProfile(req.params.username);
+        res.status(200).json({ user });
+    } catch (error) {
+        next(error);
+    }
+};
 
 export const addWishlistProduct = async (req, res, next) => {
     try {

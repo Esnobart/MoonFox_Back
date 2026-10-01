@@ -12,7 +12,10 @@ const productSubmissionSchema = new Schema({
         description: String,
         img: String,
         ageRestriction: String,
-        collectionName: String,
+        collectionName: {
+            type: Schema.Types.ObjectId,
+            ref: 'Collection'
+        },
         popular: Number,
         inStock: Number
     },
