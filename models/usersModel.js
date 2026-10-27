@@ -20,6 +20,13 @@ const userSchema = new Schema({
         type: String,
         default: null
     },
+    avatarAsset: {
+        type: new Schema({
+            publicId: { type: String, required: true },
+            url: { type: String, required: true }
+        }, { _id: false }),
+        select: false
+    },
     role: {
         type: String,
         enum: ['User', 'Creator', 'Admin'],

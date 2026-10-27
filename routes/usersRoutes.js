@@ -8,6 +8,7 @@ import {
     forgotPassword,
     resetPassword,
     currentUser,
+    updateCurrentUser,
     publicUserProfile,
     addWishlistProduct,
     removeWishlistProduct,
@@ -16,6 +17,7 @@ import {
     removeBasketProduct
 } from '../controllers/usersControllers.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { profileUpdateUpload } from '../middleware/profileUpdateUpload.js';
 import { validateBody } from '../middleware/validateBody.js';
 import { signUpSchema, signInSchema, forgotPasswordSchema, resetPasswordSchema, basketQuantitySchema } from '../models/usersSchema.js';
 import { signUpLimiter, authLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
@@ -29,6 +31,8 @@ usersRouter.post('/signin', authLimiter, validateBody(signInSchema), userLogin);
 usersRouter.post('/logout', userLogout);
 
 usersRouter.get('/current', authMiddleware, currentUser);
+
+usersRouter.patch('/current', authMiddleware, profileUpdateUpload, updateCurrentUser);
 
 usersRouter.get('/profile/:username', publicUserProfile);
 

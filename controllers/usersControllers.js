@@ -15,6 +15,7 @@ import {
 } from '../services/usersServices.js';
 import { signToken } from '../services/jwtService.js';
 import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions } from '../services/authCookieService.js';
+import { updateUserProfile } from '../services/userProfileService.js';
 
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -62,6 +63,15 @@ export const currentUser = async (req, res, next) => {
         next(error);
     }
 }
+
+export const updateCurrentUser = async (req, res, next) => {
+    try {
+        const user = await updateUserProfile(req.user, req.body, req.file);
+        res.status(200).json({ message: 'Profile updated successfully', user });
+    } catch (error) {
+        next(error);
+    }
+};
 
 export const userVerify = async (req, res, next) => {
     try {
