@@ -10,7 +10,12 @@ const productSubmissionSchema = new Schema({
         name: String,
         price: Number,
         description: String,
-        img: String,
+        images: {
+            type: [String],
+            default: [],
+            castNonArrays: false,
+            validate: (images) => Array.isArray(images) && images.length <= 5
+        },
         ageRestriction: String,
         collectionName: {
             type: Schema.Types.ObjectId,

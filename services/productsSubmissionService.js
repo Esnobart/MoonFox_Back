@@ -21,26 +21,6 @@ const assertPendingSubmission = (submission) => {
     }
 };
 
-const findOrCreateCollection = async ({ name, coverImg }) => {
-    const normalizedName = name?.trim();
-    if (!normalizedName) {
-        const error = new Error('Collection is required');
-        error.status = 400;
-        throw error;
-    }
-
-    return Collection.findOneAndUpdate(
-        { name: normalizedName },
-        {
-            $setOnInsert: {
-                name: normalizedName,
-                coverImg: coverImg || null
-            }
-        },
-        { new: true, upsert: true }
-    );
-};
-
 async function getAllProductSubmissions() {
     return ProductSubmission.find({ status: 'Pending' }).populate('creator', 'username email');
 };
@@ -82,16 +62,18 @@ async function submitNewProduct(submissionId, reviewerId) {
         throw error;
     }
 
-    const collection = await findOrCreateCollection({
-        name: submission.product.collectionName,
-        coverImg: submission.product.img
-    });
+    const collection = await Collection.findById(submission.product.collectionName);
+    if (!collection) {
+        const error = new Error('Collection not found');
+        error.status = 404;
+        throw error;
+    }
 
     const newProduct = await Product.create({
         name: submission.product.name,
         price: submission.product.price,
         description: submission.product.description,
-        img: submission.product.img,
+        images: submission.product.images,
         ageRestriction: submission.product.ageRestriction,
         author: creator._id,
         collectionName: collection._id,

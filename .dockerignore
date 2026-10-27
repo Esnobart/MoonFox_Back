@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+.env.*
+.idea
+.vscode
+*.log
+*.tar.gz
+DEPLOYMENT.md
+Dockerfile.web*

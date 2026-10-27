@@ -10,8 +10,19 @@ const productSchema = new Schema({
     description: {
         type: String
     },
-    img: {
-        type: String
+    images: {
+        type: [String],
+        default: [],
+        castNonArrays: false,
+        validate: (images) => Array.isArray(images) && images.length <= 5
+    },
+    imageAssets: {
+        type: [new Schema({
+            url: { type: String, required: true },
+            publicId: { type: String, required: true }
+        }, { _id: false })],
+        default: undefined,
+        select: false
     },
     ageRestriction: {
         type: String,
