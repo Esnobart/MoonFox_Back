@@ -21,6 +21,12 @@ const productSubmissionSchema = new Schema({
             type: Schema.Types.ObjectId,
             ref: 'Collection'
         },
+        type: {
+            type: String,
+            enum: ['Polaroids', 'Stickers', 'Pins', 'Keychains', 'Posters', 'Other'],
+            required: true,
+            default: 'Other'
+        },
         popular: Number,
         inStock: Number
     },

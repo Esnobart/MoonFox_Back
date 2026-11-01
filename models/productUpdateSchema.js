@@ -18,5 +18,6 @@ export const productUpdateSchema = z.strictObject({
     inStock: z.number().int().min(0),
     popular: z.number().int().min(0),
     ageRestriction: z.enum(['None', '18+', '21+']),
+    type: z.enum(['Polaroids', 'Stickers', 'Pins', 'Keychains', 'Posters', 'Other']).optional(),
     images: z.array(image).max(5, 'Use up to 5 photos')
 });

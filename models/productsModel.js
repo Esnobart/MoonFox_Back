@@ -39,6 +39,12 @@ const productSchema = new Schema({
         ref: 'Collection',
         required: true
     },
+    type: {
+        type: String,
+        enum: ['Polaroids', 'Stickers', 'Pins', 'Keychains', 'Posters', 'Other'],
+        required: true,
+        default: 'Other'
+    },
     popular: {
         type: Number,
         default: 0

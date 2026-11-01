@@ -35,11 +35,16 @@ async function sendRequestToSubmitProduct(userId, productData) {
         throw error;
     }
 
-    return ProductSubmission.create({
-        creator: user._id,
-        product: productData,
-        status: 'Pending'
-    });
+    try {
+        return await ProductSubmission.create({
+            creator: user._id,
+            product: productData,
+            status: 'Pending'
+        });
+    } catch (error) {
+        if (error.name === 'ValidationError') error.status = 422;
+        throw error;
+    }
 };
 
 async function submitNewProduct(submissionId, reviewerId) {
@@ -77,6 +82,7 @@ async function submitNewProduct(submissionId, reviewerId) {
         ageRestriction: submission.product.ageRestriction,
         author: creator._id,
         collectionName: collection._id,
+        type: submission.product.type,
         popular: submission.product.popular,
         inStock: submission.product.inStock
     });
