@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
+
+import { createVerificationEmail, createPasswordResetEmail } from './emailTemplates.js';
 
 dotenv.config();
 
@@ -8,88 +11,31 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const apiUrl = process.env.API_URL || 'http://localhost:4000/api';
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
-const htmlBodyForVerify = (token) => `
-    <div style="background: black; padding: 16px 0 16px 0;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-            <tr>
-                <td align="center">
-                    <h1 style="font-family: Arial, sans-serif; color: white; margin: 0 0 10px 0;">
-                        Please, verify your email for activate your account
-                    </h1>
-                    <p style="font-family: Arial, sans-serif; color: white; margin: 0 0 10px 0;">
-                        Click on the button for verify
-                    </p>
-                    <a 
-                        href="${apiUrl}/users/verify/${token}" 
-                        style="
-                            display: inline-block;
-                            padding: 10px 20px;
-                            color: white;
-                            text-decoration: none;
-                            font-size: 16px;
-                            border: 2px white solid;
-                            border-radius: 5px;
-                            font-family: Arial, sans-serif;
-                        ">
-                        Verify
-                    </a>
-                </td>
-            </tr>
-        </table>
-    </div>
-`
+const logoAttachment = {
+    content: readFileSync(new URL('./assets/moonfox-logo.png', import.meta.url)).toString('base64'),
+    filename: 'moonfox-logo.png',
+    type: 'image/png',
+    disposition: 'inline',
+    content_id: 'moonfox-logo'
+};
 
-const htmlBodyForReset = (token) => `
-    <div style="background: black; padding: 16px 0 16px 0;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-            <tr>
-                <td align="center">
-                    <h1 style="font-family: Arial, sans-serif; color: white; margin: 0 0 10px 0;">
-                        Reset your password
-                    </h1>
-                    <p style="font-family: Arial, sans-serif; color: white; margin: 0 0 10px 0;">
-                        Click on the button to reset your password
-                    </p>
-                    <a 
-                        href="${clientUrl}/?resetToken=${encodeURIComponent(token)}" 
-                        style="
-                            display: inline-block;
-                            padding: 10px 20px;
-                            color: white;
-                            text-decoration: none;
-                            font-size: 16px;
-                            border: 2px white solid;
-                            border-radius: 5px;
-                            font-family: Arial, sans-serif;
-                        ">
-                        Reset Password
-                    </a>
-                </td>
-            </tr>
-        </table>
-    </div>
-`
-
-export const sendEmailVerify = async (to, token) => {
-    const msg = {
+const sendEmail = async (to, content) => {
+    await sgMail.send({
         to,
         from: process.env.SENDGRID_SENDER_EMAIL,
-        subject: "Email Verification",
-        html: htmlBodyForVerify(token)
-    };
+        ...content,
+        attachments: [logoAttachment]
+    });
 
-    await sgMail.send(msg);
     return { message: 'Email sent successfully' };
 };
 
-export const sendEmailReset = async (to, token) => {
-    const msg = {
-        to,
-        from: process.env.SENDGRID_SENDER_EMAIL,
-        subject: "Password Reset",
-        html: htmlBodyForReset(token)
-    };
+export const sendEmailVerify = async (to, token) => sendEmail(
+    to,
+    createVerificationEmail({ token, apiUrl, clientUrl })
+);
 
-    await sgMail.send(msg);
-    return { message: 'Email sent successfully' };
-}
+export const sendEmailReset = async (to, token) => sendEmail(
+    to,
+    createPasswordResetEmail({ token, clientUrl })
+);
