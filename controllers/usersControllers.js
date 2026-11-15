@@ -5,6 +5,7 @@ import {
     loginUser,
     userAuthXService,
     userAuthXCallbackService,
+    loginOrRegisterWithX,
     verifyUser,
     requestPasswordReset,
     setNewPassword,
@@ -93,8 +94,11 @@ export const userAuthXCallback = async (req, res, next) => {
 
     try {
         const profile = await userAuthXCallbackService(code, flow.codeVerifier);
+        const response = await loginOrRegisterWithX(profile);
 
-        return res.status(200).json({ xUser: profile });
+        res.cookie(AUTH_COOKIE_NAME, response.token, loginCookieOptions);
+
+        return res.redirect(303, clientUrl);
     } catch (error) {
         next(error);
     }

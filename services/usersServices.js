@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import * as z from 'zod';
 
 import User from '../models/usersModel.js';
 import Product from '../models/productsModel.js';
@@ -150,6 +151,95 @@ async function userAuthXCallbackService(code, codeVerifier) {
         email: data.confirmed_email || null,
         avatar: data.profile_image_url || null
     }
+}
+
+async function loginOrRegisterWithX(profile) {
+    await User.init();
+
+    const xAcc = {
+        id: profile.id,
+        username: profile.username,
+        profileURL: `https://x.com/${profile.username}`,
+        linkedAt: new Date()
+    }
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            let user = await User.findOne({ 'socials.x.id': profile.id });
+
+            if (!user) {
+                const emailResult = z.string()
+                    .trim()
+                    .toLowerCase()
+                    .email()
+                    .safeParse(profile.email);
+
+                const email = emailResult.data;
+                user = await User.findOne({ email });
+
+                if (user) {
+                    if (!user.verify) throw new Error('User not verified');
+
+                    const existingXId = user.socials?.x?.id;
+
+                    if (existingXId && existingXId !== profile.id) throw new Error('Another X account is already linked');
+
+                    user = await User.findOneAndUpdate(
+                        {
+                            _id: user._id,
+                            email,
+                            verify: true,
+                            $or: [
+                                { 'socials.x.id': { $exists: false } },
+                                { 'socials.x.id':  profile.id }
+                            ]
+                        },
+                        {
+                            $set: { 'socials.x': xAcc }
+                        },
+                        {
+                            new: true,
+                            runValidators: true
+                        }
+                    );
+
+                    if (!user) continue;
+
+                } else {
+                    let username = profile.username.trim();
+
+                    while (await User.exists({ username })) {
+                        username = `${baseName.slice(0, 21)}_${
+                            crypto.randomBytes(4).toString('hex')
+                        }`;
+                    }
+
+                    user = await User.create({
+                        username,
+                        email,
+                        avatar: profile.avatar,
+                        verify: true,
+                        socials: {
+                            x: xAcc
+                        }
+                    });
+                }
+            }
+
+            if (!user.verify) throw new Error('Please verify your email before singing in');
+
+            await user.populate(userProductsPopulate);
+
+            return {
+                token: signToken(user._id, user.sessionVersion),
+                user: buildPublicUser(user)
+            }
+        } catch (error) {
+            if (error.code !== 11000) throw error;
+        }
+    }
+
+    throw new Error('Account changed during sign-in. Please try again');
 }
 
 async function verifyUser(token) {
@@ -318,6 +408,7 @@ export {
     loginUser,
     userAuthXService,
     userAuthXCallbackService,
+    loginOrRegisterWithX,
     verifyUser,
     requestPasswordReset,
     setNewPassword,
