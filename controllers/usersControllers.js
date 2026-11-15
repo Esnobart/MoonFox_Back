@@ -18,7 +18,8 @@ import {
     buildPublicUser,
     userProductsPopulate,
     userAuthGoogleService,
-    userAuthGoogleCallbackService
+    userAuthGoogleCallbackService,
+    loginOrRegisterWithGoogle
 } from '../services/usersServices.js';
 import { signToken } from '../services/jwtService.js';
 import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions, parseCookies } from '../services/authCookieService.js';
@@ -78,6 +79,13 @@ export const userAuthXCallback = async (req, res, next) => {
         flow = jwt.verify(cookies.x_oauth, process.env.JWT_SECRET, {
             algorithms: ['HS256']
         });
+
+        if (
+            flow.purpose !== 'x_auth' ||
+            typeof req.query.state !== 'string' ||
+            flow.state !== req.query.state ||
+            typeof flow.codeVerifier !== 'string'
+        ) throw new Error('Invalid authorization attempt');
     } catch {
         return res.status(400).json({ message: 'Authorization attempt expired or is invalid. Try again.'});
     }
@@ -132,6 +140,16 @@ export const userAuthGoogleCallback = async (req, res, next) => {
             process.env.JWT_SECRET,
             { algorithms: ['HS256']}
         );
+
+        if (
+            flow.purpose !== 'google_auth' ||
+            typeof req.query.state !== 'string' ||
+            flow.state !== req.query.state ||
+            typeof flow.codeVerifier !== 'string' ||
+            !flow.codeVerifier ||
+            typeof flow.nonce !== 'string' ||
+            !flow.nonce
+        ) throw new Error('Invalid authorization attempt');
     } catch {
         return res.status(400).json({ message: 'Authorization attempt expired or is invalid. Try again' })
     }
@@ -145,8 +163,11 @@ export const userAuthGoogleCallback = async (req, res, next) => {
 
     try {
         const profile = await userAuthGoogleCallbackService(code, flow);
+        const response = await loginOrRegisterWithGoogle(profile);
 
-        return res.status(200).json({ googleUser: profile });
+        res.cookie(AUTH_COOKIE_NAME, response.token, loginCookieOptions);
+
+        return res.redirect(303, clientUrl);
     } catch (error) {
         next(error)
     }

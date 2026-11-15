@@ -208,7 +208,6 @@ async function loginOrRegisterWithX(profile) {
                     );
 
                     if (!user) continue;
-
                 } else {
                     let username = profile.username.trim();
 
@@ -320,7 +319,7 @@ async function userAuthGoogleCallbackService(code, flow) {
             payload.email_verified === true &&
             (
                 email.endsWith('@gmail.com') ||
-                (typeof payload.hd === 'string' && payload.hd.lenght > 0)
+                (typeof payload.hd === 'string' && payload.hd.length > 0)
             )
         );
 
@@ -334,6 +333,89 @@ async function userAuthGoogleCallbackService(code, flow) {
     } catch {
         throw new Error('Could not complete authentification with Google')
     }
+}
+
+async function loginOrRegisterWithGoogle(profile) {
+    await User.init();
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            let user = await User.findOne({ 'socials.google.id': profile.id });
+
+            if (!user) {
+                const emailResult = z.string()
+                    .trim()
+                    .toLowerCase()
+                    .email()
+                    .safeParse(profile.email);
+
+                const email = emailResult.data;
+                user = await User.findOne({ email });
+
+                if (user) {
+                    if (!user.verify) throw new Error('User not verified');
+
+                    const existingGoogleId = user.socials?.google?.id;
+
+                    if (existingGoogleId && existingGoogleId !== profile.id) throw new Error('Another Google account is already linked');
+
+                    user = await User.findOneAndUpdate(
+                        {
+                            _id: user._id,
+                            email,
+                            verify: true,
+                            $or: [
+                                { 'socials.google.id': { $exists: false } },
+                                { 'socials.google.id':  profile.id }
+                            ]
+                        },
+                        {
+                            $set: { 'socials.google.id': profile.id }
+                        },
+                        {
+                            new: true,
+                            runValidators: true
+                        }
+                    );
+
+                    if (!user) continue;
+                } else {
+                    let username = profile.name.trim();
+
+                    while (await User.exists({ username })) {
+                        username = `${baseName.slice(0, 21)}_${
+                            crypto.randomBytes(4).toString('hex')
+                        }`;
+                    }
+
+                    user = await User.create({
+                        username,
+                        email,
+                        avatar: profile.avatar,
+                        verify: true,
+                        socials: {
+                            google: {
+                                id: profile.id
+                            }
+                        }
+                    })
+                }
+            }
+
+            if (!user.verify) throw new Error('Please verify your email before singing in');
+
+            await user.populate(userProductsPopulate);
+
+            return {
+                token: signToken(user._id, user.sessionVersion),
+                user: buildPublicUser(user)
+            }
+        } catch (error) {
+            if (error.code !== 11000) throw error;
+        }
+    }
+
+    throw new Error('Account changed during sign-in. Please try again');
 }
 
 async function verifyUser(token) {
@@ -505,6 +587,7 @@ export {
     loginOrRegisterWithX,
     userAuthGoogleService,
     userAuthGoogleCallbackService,
+    loginOrRegisterWithGoogle,
     verifyUser,
     requestPasswordReset,
     setNewPassword,
