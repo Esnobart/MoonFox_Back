@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import * as z from 'zod';
+import { OAuth2Client } from 'google-auth-library';
 
 import User from '../models/usersModel.js';
 import Product from '../models/productsModel.js';
@@ -9,9 +10,12 @@ import { createHashPassword, comparePassword } from './passwordHashService.js';
 import { sendEmailVerify, sendEmailReset } from './emailService.js';
 import { signToken } from './jwtService.js';
 
-const clientId = process.env.X_CLIENT_ID;
-const clientSecret = process.env.X_CLIENT_SECRET;
-const redirectUri = process.env.X_REDIRECT_URI;
+const xClientId = process.env.X_CLIENT_ID;
+const xClientSecret = process.env.X_CLIENT_SECRET;
+const xRedirectUri = process.env.X_REDIRECT_URI;
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI;
 const jwtSecret = process.env.JWT_SECRET;
 
 const productRelationsPopulate = [
@@ -83,8 +87,8 @@ async function userAuthXService(body, res) {
     const authUrl = new URL(`https://x.com/i/oauth2/authorize`);
     authUrl.search = new URLSearchParams({
         response_type: 'code',
-        client_id: clientId,
-        redirect_uri: redirectUri,
+        client_id: xClientId,
+        redirect_uri: xRedirectUri,
         scope: 'tweet.read users.read users.email',
         state,
         code_challenge: codeChallenge,
@@ -96,7 +100,7 @@ async function userAuthXService(body, res) {
 
 async function userAuthXCallbackService(code, codeVerifier) {
     const credentials = Buffer.from(
-        `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`
+        `${encodeURIComponent(xClientId)}:${encodeURIComponent(xClientSecret)}`
     ).toString('base64');
 
     const tokenResponce = await fetch(
@@ -110,7 +114,7 @@ async function userAuthXCallbackService(code, codeVerifier) {
             body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 code,
-                redirect_uri: redirectUri,
+                redirect_uri: xRedirectUri,
                 code_verifier: codeVerifier
             }),
             signal: AbortSignal.timeout(10000),
@@ -240,6 +244,96 @@ async function loginOrRegisterWithX(profile) {
     }
 
     throw new Error('Account changed during sign-in. Please try again');
+}
+
+async function userAuthGoogleService(res) {
+    const googleClient = new OAuth2Client(
+        googleClientId,
+        googleClientSecret,
+        googleRedirectUri
+    )
+    const state = crypto.randomBytes(32).toString('base64url');
+    const nonce = crypto.randomBytes(32).toString('base64url');
+    const { codeVerifier, codeChallenge } = await googleClient.generateCodeVerifierAsync();
+
+    const flowToken = jwtSecret.sign(
+        {
+            purpose: 'google_auth',
+            state,
+            nonce,
+            codeVerifier
+        },
+        secret,
+        {
+            algorithm: 'HS256',
+            expiresIn: '10m'
+        }
+    );
+
+    res.set('Cache-Control', 'no-store');
+    res.cookie('google_oauth', flowToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV,
+        sameSite: 'lax',
+        path: '/api/users/auth/google',
+        maxAge: 10 * 60 * 1000
+    });
+
+    return googleClient.generateAuthUrl({
+        scope: ['openid', 'email', 'profile'],
+        state,
+        nonce,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+        prompt: 'select_account'
+    })
+}
+
+async function userAuthGoogleCallbackService(code, flow) {
+    const googleClient = new OAuth2Client(
+        googleClientId,
+        googleClientSecret,
+        googleRedirectUri
+    );
+
+    try {
+        const { tokens } = await googleClient.getToken({
+            code,
+            codeVerifier: flow.codeVerifier,
+            redirect_uri: googleRedirectUri
+        });
+        const ticket = await googleClient.verifyIdToken({
+            idToken: tokens.id_token,
+            audience: googleClientId
+        });
+        const payload = ticket.getPayload();
+
+        if (
+            typeof payload?.sub !== 'string' ||
+            !payload.sub ||
+            payload.nonce !== flow.nonce
+        ) throw new Error('Invalid Google ID token');
+
+        const email = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : null;
+        const emailTrusted = Boolean(
+            email &&
+            payload.email_verified === true &&
+            (
+                email.endsWith('@gmail.com') ||
+                (typeof payload.hd === 'string' && payload.hd.lenght > 0)
+            )
+        );
+
+        return {
+            id: payload.sub,
+            name: payload.name || null,
+            email,
+            emailTrusted,
+            avatar: payload.picture || null
+        }
+    } catch {
+        throw new Error('Could not complete authentification with Google')
+    }
 }
 
 async function verifyUser(token) {
@@ -409,6 +503,8 @@ export {
     userAuthXService,
     userAuthXCallbackService,
     loginOrRegisterWithX,
+    userAuthGoogleService,
+    userAuthGoogleCallbackService,
     verifyUser,
     requestPasswordReset,
     setNewPassword,

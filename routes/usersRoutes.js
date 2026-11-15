@@ -16,7 +16,9 @@ import {
     removeWishlistProduct,
     addBasketProduct,
     updateBasketProductQuantity,
-    removeBasketProduct
+    removeBasketProduct,
+    userAuthGoogle,
+    userAuthGoogleCallback
 } from '../controllers/usersControllers.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { profileUpdateUpload } from '../middleware/profileUpdateUpload.js';
@@ -32,7 +34,11 @@ usersRouter.post('/signin', authLimiter, validateBody(signInSchema), userLogin);
 
 usersRouter.post('/auth/x', authLimiter,  userAuthX);
 
-usersRouter.get('/auth/x/callback', userAuthXCallback)
+usersRouter.get('/auth/x/callback', userAuthXCallback);
+
+usersRouter.post('/auth/google', authLimiter, userAuthGoogle);
+
+usersRouter.get('/auth/google/callback', userAuthGoogleCallback);
 
 usersRouter.post('/logout', userLogout);
 

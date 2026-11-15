@@ -16,7 +16,9 @@ import {
     updateProductQuantityInBasket,
     removeProductFromBasket,
     buildPublicUser,
-    userProductsPopulate
+    userProductsPopulate,
+    userAuthGoogleService,
+    userAuthGoogleCallbackService
 } from '../services/usersServices.js';
 import { signToken } from '../services/jwtService.js';
 import { AUTH_COOKIE_NAME, authCookieOptions, loginCookieOptions, parseCookies } from '../services/authCookieService.js';
@@ -76,21 +78,16 @@ export const userAuthXCallback = async (req, res, next) => {
         flow = jwt.verify(cookies.x_oauth, process.env.JWT_SECRET, {
             algorithms: ['HS256']
         });
-
-        if (
-            flow.purpose !== 'x_auth' ||
-            typeof req.query.state !== 'string' ||
-            flow.state !== req.query.state ||
-            typeof flow.codeVerifier !== 'string'
-        ) throw new Error('Invalid authorization attempt');
     } catch {
         return res.status(400).json({ message: 'Authorization attempt expired or is invalid. Try again.'});
     }
 
-    if (req.query.error !== undefined) return res.status(400).json({ message: 'Authorization with X was cancelled' });
+    if (req.query.error !== undefined) 
+        return res.status(400).json({ message: 'Authorization with X was cancelled' });
 
     const { code } = req.query;
-    if (typeof code !== 'string' || !code || code.length > 2048) return res.status(400).json({ message: 'Authorization code is missing or invalid' });
+    if (typeof code !== 'string' || !code || code.length > 2048) 
+        return res.status(400).json({ message: 'Authorization code is missing or invalid' });
 
     try {
         const profile = await userAuthXCallbackService(code, flow.codeVerifier);
@@ -101,6 +98,57 @@ export const userAuthXCallback = async (req, res, next) => {
         return res.redirect(303, clientUrl);
     } catch (error) {
         next(error);
+    }
+}
+
+export const userAuthGoogle = async (req, res, next) => {
+    try {
+        const authUrl = await userAuthGoogleService(res);
+
+        return res.redirect(302, authUrl);
+    } catch (error) {
+        next (error)
+    }
+}
+
+export const userAuthGoogleCallback = async (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    res.set('Referrer-Policy', 'no-referrer');
+
+    res.clearCookie('google_oauth', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV,
+        sameSite: 'lax',
+        path: '/api/users/auth/google'
+    });
+
+    let flow;
+
+    try {
+        const cookies = parseCookies(req.headers.cookie);
+
+        flow = jwt.verify(
+            cookies.google_oauth,
+            process.env.JWT_SECRET,
+            { algorithms: ['HS256']}
+        );
+    } catch {
+        return res.status(400).json({ message: 'Authorization attempt expired or is invalid. Try again' })
+    }
+
+    if (req.query.error !== undefined) 
+        return res.status(400).json({ message: 'Authorization with Google was cancelled'});
+
+    const { code } = req.query;
+    if (typeof code !== 'string' || !code || code.length > 2048) 
+        return res.status(400).json({ message: 'Authorization code is missing or invalid' });
+
+    try {
+        const profile = await userAuthGoogleCallbackService(code, flow);
+
+        return res.status(200).json({ googleUser: profile });
+    } catch (error) {
+        next(error)
     }
 }
 
