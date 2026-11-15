@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import { boolean } from 'zod';
 
 const userSchema = new Schema({
     username: {
@@ -13,7 +14,11 @@ const userSchema = new Schema({
     },
     password: {
         type: String,
-        required: true,
+        required: function () {
+            const hasSocialLogin = this.socials?.x?.id || this.socials?.google?.id;
+
+            return !hasSocialLogin;
+        },
         select: false
     },
     avatar: {
@@ -31,6 +36,26 @@ const userSchema = new Schema({
         type: String,
         enum: ['User', 'Creator', 'Admin'],
         default: 'User'
+    },
+    socials: {
+        x: {
+            id: {
+                type: String,
+                unique: true,
+                sparse: true
+            },
+            isViewing: Boolean,
+            username: String,
+            profileURL: String,
+            linkedAt: Date
+        },
+        google: {
+            id: {
+                type: String,
+                unique: true,
+                sparse: true
+            }
+        }
     },
     wishlist: [{
         type: Schema.Types.ObjectId,

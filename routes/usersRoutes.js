@@ -3,6 +3,8 @@ import { Router } from 'express';
 import {
     userSignUp,
     userLogin,
+    userAuthX,
+    userAuthXCallback,
     userLogout,
     userVerify,
     forgotPassword,
@@ -27,6 +29,10 @@ const usersRouter = Router();
 usersRouter.post('/signup', signUpLimiter, validateBody(signUpSchema), userSignUp);
 
 usersRouter.post('/signin', authLimiter, validateBody(signInSchema), userLogin);
+
+usersRouter.post('/auth/x', authLimiter,  userAuthX);
+
+usersRouter.get('/auth/x/callback', userAuthXCallback)
 
 usersRouter.post('/logout', userLogout);
 

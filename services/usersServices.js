@@ -1,11 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 import User from '../models/usersModel.js';
 import Product from '../models/productsModel.js';
 import { createHashPassword, comparePassword } from './passwordHashService.js';
 import { sendEmailVerify, sendEmailReset } from './emailService.js';
 import { signToken } from './jwtService.js';
+
+const clientId = process.env.X_CLIENT_ID;
+const clientSecret = process.env.X_CLIENT_SECRET;
+const redirectUri = process.env.X_REDIRECT_URI;
+const jwtSecret = process.env.JWT_SECRET;
 
 const productRelationsPopulate = [
     { path: 'author', select: 'username avatar role' },
@@ -55,12 +61,95 @@ async function loginUser(data) {
         ]
     })
         .populate(userProductsPopulate).select('+password');
-    if (!user) throw new Error('Invalid credentials');
+    if (!user || !user.password) throw new Error('Invalid credentials');
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) throw new Error('Invalid credentials');
     if (!user.verify) throw new Error('User not verified');
     const token = signToken(user._id, user.sessionVersion);
     return { message: `User ${user.username} logged in successfully`, token, user: buildPublicUser(user) };
+}
+
+async function userAuthXService(body, res) {
+    const state = crypto.randomBytes(32).toString('base64url');
+    const codeVerifier = crypto.randomBytes(32).toString('base64url');
+    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+
+    const flowToken = jwt.sign({purpose: 'x_auth', state, codeVerifier}, jwtSecret, { algorithm: 'HS256', expiresIn: '10m' });
+
+    res.set('Cache-Control', 'no-store');
+    res.cookie('x_oauth', flowToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/users/auth/x', maxAge: 10 * 60 * 1000 });
+
+    const authUrl = new URL(`https://x.com/i/oauth2/authorize`);
+    authUrl.search = new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: 'tweet.read users.read users.email',
+        state,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256'
+    }).toString();
+
+    return authUrl.toString();
+}
+
+async function userAuthXCallbackService(code, codeVerifier) {
+    const credentials = Buffer.from(
+        `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`
+    ).toString('base64');
+
+    const tokenResponce = await fetch(
+        'https://api.x.com/2/oauth2/token',
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic ${credentials}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: redirectUri,
+                code_verifier: codeVerifier
+            }),
+            signal: AbortSignal.timeout(10000),
+            redirect: 'error'
+        }
+    );
+
+    if (!tokenResponce.ok) throw new Error('Token exchange failed');
+
+    const token = await tokenResponce.json();
+
+    if (typeof token.access_token !== 'string' || !token.access_token) throw new Error('Invalid token response');
+
+    const profileUrl = new URL('https://api.x.com/2/users/me');
+    const fields = ['profile_image_url'];
+
+    if (token.scope?.split(' ').includes('users.email')) fields.push('confirmed_email');
+
+    profileUrl.searchParams.set('user.fields', fields.join(','));
+
+    const profileResponse = await fetch(profileUrl, {
+        headers: {
+            Authorization: `Bearer ${token.access_token}`
+        },
+        signal: AbortSignal.timeout(10000),
+        redirect: 'error'
+    });
+
+    if (!profileResponse.ok) throw new Error('Profile request failed');
+    
+    const { data } = await profileResponse.json();
+
+    if (typeof data?.id !== 'string' || !data.id) throw new Error('Invalid profile response');
+
+    return {
+        id: data.id,
+        username: data.username,
+        email: data.confirmed_email || null,
+        avatar: data.profile_image_url || null
+    }
 }
 
 async function verifyUser(token) {
@@ -227,6 +316,8 @@ async function removeProductFromBasket(userId, productId) {
 export {
     signUpUser,
     loginUser,
+    userAuthXService,
+    userAuthXCallbackService,
     verifyUser,
     requestPasswordReset,
     setNewPassword,
