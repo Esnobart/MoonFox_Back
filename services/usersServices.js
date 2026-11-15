@@ -256,14 +256,14 @@ async function userAuthGoogleService(res) {
     const nonce = crypto.randomBytes(32).toString('base64url');
     const { codeVerifier, codeChallenge } = await googleClient.generateCodeVerifierAsync();
 
-    const flowToken = jwtSecret.sign(
+    const flowToken = jwt.sign(
         {
             purpose: 'google_auth',
             state,
             nonce,
             codeVerifier
         },
-        secret,
+        jwtSecret,
         {
             algorithm: 'HS256',
             expiresIn: '10m'
