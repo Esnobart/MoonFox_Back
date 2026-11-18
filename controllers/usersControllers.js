@@ -197,7 +197,7 @@ export const currentUser = async (req, res, next) => {
 
 export const updateCurrentUser = async (req, res, next) => {
     try {
-        const user = await updateUserProfile(req.user, req.body, req.file);
+        const user = await updateUserProfile(req.user, req.body, req.files);
         res.status(200).json({ message: 'Profile updated successfully', user });
     } catch (error) {
         next(error);

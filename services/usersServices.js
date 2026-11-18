@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import * as z from 'zod';
 import { OAuth2Client } from 'google-auth-library';
 
-import User from '../models/usersModel.js';
+import User, { normalizeUserImages } from '../models/usersModel.js';
 import Product from '../models/productsModel.js';
 import { createHashPassword, comparePassword } from './passwordHashService.js';
 import { sendEmailVerify, sendEmailReset } from './emailService.js';
@@ -38,7 +38,7 @@ const buildPublicUser = (user) => ({
     _id: user._id,
     username: user.username,
     email: user.email,
-    avatar: user.avatar,
+    avatar: normalizeUserImages(user.avatar),
     role: user.role,
     wishlist: user.wishlist,
     basket: user.basket
@@ -220,7 +220,7 @@ async function loginOrRegisterWithX(profile) {
                     user = await User.create({
                         username,
                         email,
-                        avatar: profile.avatar,
+                        avatar: normalizeUserImages(profile.avatar),
                         verify: true,
                         socials: {
                             x: xAcc
@@ -391,7 +391,7 @@ async function loginOrRegisterWithGoogle(profile) {
                     user = await User.create({
                         username,
                         email,
-                        avatar: profile.avatar,
+                        avatar: normalizeUserImages(profile.avatar),
                         verify: true,
                         socials: {
                             google: {
@@ -480,7 +480,7 @@ async function getPublicUserProfile(username) {
     return {
         _id: user._id,
         username: user.username,
-        avatar: user.avatar,
+        avatar: normalizeUserImages(user.avatar),
         role: user.role,
         products
     };

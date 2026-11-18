@@ -1,5 +1,15 @@
 import { model, Schema } from 'mongoose';
-import { boolean } from 'zod';
+
+export const PROFILE_IMAGE_FIELDS = ['avatar', 'artistBanner', 'catalogBanner'];
+
+export const normalizeUserImages = (images) => Array.isArray(images)
+    ? [...images]
+    : typeof images === 'string' && images ? [images] : [];
+
+const avatarAssetSchema = new Schema({
+    publicId: { type: String, required: true },
+    url: { type: String, required: true }
+}, { _id: false });
 
 const userSchema = new Schema({
     username: {
@@ -22,14 +32,21 @@ const userSchema = new Schema({
         select: false
     },
     avatar: {
-        type: String,
-        default: null
+        // [profile photo, artist catalog banner, general catalog banner]
+        // Empty earlier slots are null so banners keep their positions.
+        type: [String],
+        default: [],
+        castNonArrays: false,
+        validate: (images) => Array.isArray(images) && images.length <= 3
     },
     avatarAsset: {
-        type: new Schema({
-            publicId: { type: String, required: true },
-            url: { type: String, required: true }
-        }, { _id: false }),
+        // Retained for cleanup of photos uploaded before avatarAssets existed.
+        type: avatarAssetSchema,
+        select: false
+    },
+    avatarAssets: {
+        type: [avatarAssetSchema],
+        default: undefined,
         select: false
     },
     role: {
@@ -97,6 +114,10 @@ const userSchema = new Schema({
         default: 0
     }
     
+});
+
+userSchema.pre('init', (user) => {
+    user.avatar = normalizeUserImages(user.avatar);
 });
 
 const User = model('User', userSchema);

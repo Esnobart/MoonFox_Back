@@ -3,7 +3,7 @@ import { fileTypeFromBuffer } from 'file-type';
 
 import Collection from '../models/collectionsModel.js';
 import Product from '../models/productsModel.js';
-import User from '../models/usersModel.js';
+import User, { normalizeUserImages } from '../models/usersModel.js';
 import { productUpdateSchema } from '../models/productUpdateSchema.js';
 import { MAX_PRODUCT_IMAGE_SIZE, PRODUCT_IMAGE_TYPES } from '../middleware/productUpdateUpload.js';
 import { deleteUnreferencedProductImages, uploadProductImage } from './productImagesService.js';
@@ -52,7 +52,6 @@ const validateImages = async (images, files, product) => {
 
     if (usedFiles.size !== files.length) fail(422, 'Every new photo must be included in images');
 
-    // Check all file contents before uploading anything; MIME headers alone are untrusted.
     for (const file of files) {
         if (!file.buffer?.length || file.buffer.length > MAX_PRODUCT_IMAGE_SIZE) {
             fail(422, 'Each photo must contain data and be at most 10 MiB');
@@ -83,6 +82,7 @@ export const updateProduct = async (productId, body, files = []) => {
         Collection.findById(values.collectionName).select('name coverImg').lean()
     ]);
     if (!author) fail(422, 'Selected author does not exist');
+    author.avatar = normalizeUserImages(author.avatar);
     if (!collection) fail(422, 'Selected collection does not exist');
     await validateImages(imageEntries, files, product);
 
